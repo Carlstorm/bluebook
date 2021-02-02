@@ -3,6 +3,7 @@ body {
     overflow-x: hidden;
     height: 200vh;
     font-family: calibri;
+    background-color: transparent !important;
 }
 
 canvas {
