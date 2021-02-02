@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - buffergeometry - lines drawrange</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link type="text/css" rel="stylesheet" href="css/style.css">
+	</head>
+	<body>
+
+		<!-- <nav>
+			<div></div>
+			<div>
+				<p>Blabla</p>
+				<p>Blabla2</p>
+			</div>
+		</nav> -->
+		<div id="olay"></div>
+		<div id="container">
+		</div>
+		<div id="background"></div>
+		<div id="hero">
+				<div id="herocontent">
+					<div id="profileImg"></div>
+					<p id="name">Carl Erik Storm</p>
+				</div>
+		</div>
+		<div id="underheader">
+			<div class="underheaderContent" id="MainUnder">
+				<div id="textpart">
+					<p class="q">Age?</p>
+					<p class="a">- 23</p>
+
+					<p class="q">Previous education?</p>
+					<p class="a">Multimedia Design</p>
+
+					<p class="q">What is the current background on your computer screen and what was the previous?</p>
+					<p class="a">its just black, used to be a low poly planet though.</p>
+
+					<p class="q">Where do you live?</p>
+					<p class="a">Gellerupparken in brabrand, about 4 km's from the Academy</p>
+
+					<p class="q">How many siblings do you have? How many cousins?</p>
+					<p class="a">i have an elder brother and three sister-in-laws</p>
+
+					<p class="q">What can you do today that you were not capable of a year ago?</p>
+					<p class="a">Celebrate my 24th birthday</p>
+
+					<p class="q">If you had not chosen to study web development – what would you then have chosen?</p>
+					<p class="a">probably software developer</p>
+
+					<p class="q">Why did you choose to study web development?</p>
+					<p class="a">i enjoy problem solving and making things</p>
+
+					<p class="q">If you got a gift certificate for 5.000 kr. And it had to be used today, but you could choose any shop to use it in. What shop would you choose and what would you buy?</p>
+					<p class="a">i would get my teeth fixed</p>
+
+					<p class="q">What is your definition of being wealthy and why?</p>
+					<p class="a">having a great deal of money, resources, or assets; rich. - Oxford Languages</p>
+
+				</div>
+			</div>
+		</div>
+
+		<script type="module">
+
+			import * as THREE from 'https://unpkg.com/three/build/three.module.js'
+
+			// SCROLL
+
+			window.addEventListener("scroll", scrollcheck)
+
+			function scrollcheck() {
+				if (window.scrollY > 100) {
+					document.getElementById("MainUnder").classList.add("bigboi")
+					document.getElementById("herocontent").classList.add("heroheadingnew")
+					// window.document.querySelector("NAV").classList.add("navtransformed")
+				} else {
+					document.getElementById("MainUnder").classList.remove("bigboi")
+					// window.document.querySelector("NAV").classList.remove("navtransformed")
+					document.getElementById("herocontent").classList.remove("heroheadingnew")
+				}
+	
+			}
+
+			let group;
+            let container; 
+			const particlesData = [];
+			let camera, scene, renderer;
+			let positions, colors;
+			let particles;
+			let pointCloud;
+			let particlePositions;
+			let linesMesh;
+
+			const maxParticleCount = 1000;
+			let particleCount = 140;
+            let Vw = window.innerWidth;
+            let Hw = window.innerHeight;
+
+            let VwHalf = Vw / 2;
+            let HwHalf = Hw / 2;
+
+            let DotContainer;
+            let test
+
+
+			const effectController = {
+				showDots: true,
+				showLines: true,
+				minDistance: 100,
+				limitConnections: true,
+				maxConnections: 12,
+				particleCount: 100
+			};
+
+			// mousemove
+
+			window.addEventListener("mousemove", onMouseMove, false)
+			const raycaster = new THREE.Raycaster();
+			const mouse = new THREE.Vector2();
+
+			function onMouseMove( event ) {
+			mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+			mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+			}
+
+			init();
+			animate();
+
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 4000 );
+				camera.position.z = 1100;;
+
+				scene = new THREE.Scene();
+
+				group = new THREE.Group();
+				scene.add( group );
+
+                DotContainer = new THREE.BoxBufferGeometry( Vw, Hw, 0 )
+
+				test = new THREE.Mesh( DotContainer )
+				
+				const segments = maxParticleCount * maxParticleCount;
+
+				positions = new Float32Array( segments * 3 );
+				colors = new Float32Array( segments * 3 );
+
+				let sprite = new THREE.TextureLoader().load( './imgs/PointSprite.png' );
+				let pMaterial = new THREE.PointsMaterial({
+  					color: 0xaaaaaa,
+  					size: 12,
+  					map: sprite,
+					  blending: THREE.AdditiveBlendiqng,
+					  transparent: true
+				});
+			
+				particles = new THREE.BufferGeometry();
+				particlePositions = new Float32Array( maxParticleCount * 3 );
+
+				for ( let i = 0; i < maxParticleCount; i ++ ) {
+
+					const x = Math.random() * Vw - Vw / 2;
+					const y = Math.random() * Hw - Hw / 2;                    
+                    const z = 0;
+
+					particlePositions[ i * 3 ] = x;
+					particlePositions[ i * 3 + 1 ] = y;
+
+					// add it to the geometry
+					particlesData.push( {
+						velocity: new THREE.Vector3( - 1 + Math.random() * 2, - 1 + Math.random() * 2, - 1 + Math.random() * 2 ),
+						numConnections: 0
+					} );
+
+				}
+
+				particles.setDrawRange( 0, particleCount );
+				particles.setAttribute( 'position', new THREE.BufferAttribute( particlePositions, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+
+				// create the particle system
+				pointCloud = new THREE.Points( particles, pMaterial );
+				group.add( pointCloud );
+
+				const geometry = new THREE.BufferGeometry();
+
+				geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+				geometry.setAttribute( 'color', new THREE.BufferAttribute( colors, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+
+				geometry.computeBoundingSphere();
+
+				geometry.setDrawRange( 0, 0 );
+
+				const material = new THREE.LineBasicMaterial( {
+					vertexColors: true,
+					blending: THREE.AdditiveBlending,
+					transparent: true
+				} );
+
+				linesMesh = new THREE.LineSegments( geometry, material );
+				group.add( linesMesh );
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.outputEncoding = THREE.sRGBEncoding;
+
+				container.appendChild( renderer.domElement );
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();                
+
+                // Check igen
+                Vw = window.innerWidth;
+                Hw = window.innerHeight;
+                DotContainer = new THREE.BoxBufferGeometry( Vw, Hw, 0 )
+				VwHalf = Vw / 2;
+            	HwHalf = Hw / 2;
+                test.geometry.dispose();
+                test.geometry = DotContainer
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+
+				let vertexpos = 0;
+				let colorpos = 0;
+                let numConnected = 0;
+				
+				var vec = new THREE.Vector3(); // create once and reuse
+				var pos = new THREE.Vector3(); // create once and reuse
+				vec.set(
+					mouse.x,
+					mouse.y,
+					0
+				);
+
+				vec.unproject( camera );
+				vec.sub( camera.position ).normalize();
+
+				var distance = - camera.position.z / vec.z;
+
+				pos.copy( camera.position ).add( vec.multiplyScalar( distance ) );
+
+				for ( let i = 0; i < particleCount; i ++ )
+					particlesData[ i ].numConnections = 0;
+
+				for ( let i = 0; i < particleCount; i ++ ) {
+
+
+
+
+
+					
+
+				// get the particle
+				let particleData = particlesData[ i ];
+				let gravdistance = 120;
+
+				let mouseposX = (pos.x + VwHalf)
+				let partttataX = (particlePositions[ i * 3 ] + VwHalf)
+				let gravdistX = mouseposX-partttataX;
+
+				let mouseposY = (pos.y + HwHalf)
+				let partttataY = (particlePositions[ i * 3 + 1 ] + HwHalf)
+				let gravdistY = mouseposY-partttataY;
+
+				let newXtest = 0;
+				if (gravdistY < gravdistance && gravdistY > -gravdistance && gravdistX < gravdistance && gravdistX > -gravdistance) {
+					if(gravdistX > 0) {
+						newXtest = 1-(gravdistX/gravdistance)
+						if (particleData.velocity.x < 0) {
+							particleData.velocity.x -= (particleData.velocity.x/20);
+						}
+					} else {
+						if (particleData.velocity.x > 0) {
+							particleData.velocity.x -= (particleData.velocity.x/20);
+						}
+						newXtest = (-1+(gravdistX/gravdistance)*-1)
+					}
+				} else {
+					newXtest = 0;
+				}
+
+				let newYtest = 0;
+				if (gravdistY < gravdistance && gravdistY > -gravdistance && gravdistX < gravdistance && gravdistX > -100) {
+					if(gravdistY > 0) {
+						newYtest = 1-(gravdistY/gravdistance)
+						if (particleData.velocity.y < 0) {
+							particleData.velocity.y -= (particleData.velocity.y/20);
+						}
+					} else {
+						if (particleData.velocity.y > 0) {
+							particleData.velocity.y -= (particleData.velocity.y/20);
+						}
+						newYtest = (-1+(gravdistY/gravdistance)*-1)
+					}
+				} else {
+					newYtest = 0;
+				}
+				particleData.velocity.y = particleData.velocity.y+(newYtest/1.5)
+
+				particleData.velocity.x = particleData.velocity.x+(newXtest/1.5)
+
+
+				let maxspeed = 0.5
+				if (particleData.velocity.x > maxspeed) {
+					particleData.velocity.x -= 0.06;
+				}
+
+				if (particleData.velocity.x < -maxspeed) {
+					particleData.velocity.x += 0.06;
+				}
+
+				if (particleData.velocity.y > maxspeed) {
+					particleData.velocity.y -= 0.06;
+				}
+
+				if (particleData.velocity.y < -maxspeed) {
+					particleData.velocity.y += 0.06;
+				}
+
+					particlePositions[ i * 3 ] += particleData.velocity.x;
+					particlePositions[ i * 3 + 1 ] += particleData.velocity.y;
+
+					// bounce
+
+					if ( particlePositions[ i * 3 + 1 ] < - HwHalf || particlePositions[ i * 3 + 1 ] > HwHalf )
+						particleData.velocity.y = - particleData.velocity.y;
+
+					if ( particlePositions[ i * 3 ] < - VwHalf || particlePositions[ i * 3 ] > VwHalf )
+						particleData.velocity.x = - particleData.velocity.x;
+
+					if ( effectController.limitConnections && particleData.numConnections >= effectController.maxConnections )
+						continue;
+
+					// Check collision
+					for ( let j = i + 1; j < particleCount; j ++ ) {
+
+						let particleDataB = particlesData[ j ];
+						if ( effectController.limitConnections && particleDataB.numConnections >= effectController.maxConnections )
+							continue;
+
+						let dx = particlePositions[ i * 3 ] - particlePositions[ j * 3 ];
+						let dy = particlePositions[ i * 3 + 1 ] - particlePositions[ j * 3 + 1 ];
+						let dist = Math.sqrt( dx * dx + dy * dy );
+
+						if ( dist < effectController.minDistance ) {
+
+							particleData.numConnections ++;
+							particleDataB.numConnections ++;
+
+							const alpha = 1.0 - dist / effectController.minDistance;
+
+							positions[ vertexpos ++ ] = particlePositions[ i * 3 ];
+							positions[ vertexpos ++ ] = particlePositions[ i * 3 + 1 ];
+							positions[ vertexpos ++ ] = 0;
+
+							positions[ vertexpos ++ ] = particlePositions[ j * 3 ];
+							positions[ vertexpos ++ ] = particlePositions[ j * 3 + 1 ];
+							positions[ vertexpos ++ ] = 0;
+
+							colors[ colorpos ++ ] = alpha;
+							colors[ colorpos ++ ] = alpha;
+							colors[ colorpos ++ ] = alpha;
+
+							colors[ colorpos ++ ] = alpha;
+							colors[ colorpos ++ ] = alpha;
+							colors[ colorpos ++ ] = alpha;
+
+							numConnected ++;
+
+						}
+					}
+				}
+
+				linesMesh.geometry.setDrawRange( 0, numConnected * 2 );
+				linesMesh.geometry.attributes.position.needsUpdate = true;
+				linesMesh.geometry.attributes.color.needsUpdate = true;
+
+				pointCloud.geometry.attributes.position.needsUpdate = true;
+
+				requestAnimationFrame( animate );
+				render();
+			}
+
+			function render() {
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>
